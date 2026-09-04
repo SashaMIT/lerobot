@@ -75,7 +75,7 @@ Older RoboMeter configurations may contain `reward_output` and `success_threshol
 
 ### Migrating from the scalar API
 
-````python
+```python
 import torch
 
 reward_model.eval()
@@ -105,7 +105,7 @@ cfg = RobometerConfig(
     device="cuda",
 )
 reward_model = RobometerRewardModel.from_pretrained(cfg.pretrained_path, config=cfg)
-````
+```
 
 ### Encode Frames and Compute a Reward
 
