@@ -159,6 +159,21 @@ live observation, so it is rejected until `/start` is running. It prints the
 subtask it picks as `Autosteer subtask:`, and `--autosteer_interval_s` sets how
 many seconds of motion pass between two re-planning queries.
 
+Pick the runtime to match how the task is given, as G0.5 was trained:
+
+- **High-level task, no steering:** keep System 2. Each chunk predicts the
+  current subtask from the task, then acts on it.
+- **`/subtask` or `/autosteer`:** use `--policy.runtime_system=system1`. The
+  subtask becomes the task and the policy acts on it directly; `/autosteer` still
+  plans each subtask from the goal with a System 2 query. System 2 on a
+  subtask-as-task would plan a subtask of the subtask, a prompt it was not
+  trained on.
+
+`--policy.runtime_cot_fields='["bbox", "subtask"]'` makes System 2 locate the
+relevant objects before naming the subtask. The action attends to the whole
+chain of thought, so the boxes ground it; the default `["subtask"]` generates
+fewer tokens per chunk.
+
 In interactive mode `--duration` bounds each `/start` segment rather than the
 whole session.
 
@@ -295,20 +310,21 @@ lerobot-train \
 
 ## Key Configuration Parameters
 
-| Parameter                                   | Description                                                      |
-| ------------------------------------------- | ---------------------------------------------------------------- |
-| `policy.checkpoint_profile`                 | Selects the packaged base, LIBERO, RoboTwin, or SO-101 contract  |
-| `policy.embodiment`                         | Robot name written in the prompt; selects a released slot table  |
-| `policy.state_slots`, `policy.action_slots` | Explicit policy-layout slot of each raw state/action value       |
-| `policy.camera_order`                       | Dataset camera per checkpoint image slot; `null` leaves it empty |
-| `policy.action_head`                        | Uses the checkpoint's `flow` or `actioncodec` action path        |
-| `policy.runtime_system`                     | Selects direct System 1 or unified System 2 reasoning and action |
-| `policy.chunk_size`                         | Number of actions predicted in each chunk                        |
-| `policy.n_action_steps`                     | Number of actions executed before replanning                     |
-| `policy.use_language_recipe`                | Enable G0.5's built-in language-supervision recipe               |
-| `policy.recipe_path`                        | Explicit external recipe override used during fine-tuning        |
-| `policy.optimizer_backbone_lr_multiplier`   | Learning-rate multiplier for the language backbone               |
-| `policy.optimizer_vision_lr_multiplier`     | Learning-rate multiplier for the vision tower                    |
+| Parameter                                   | Description                                                       |
+| ------------------------------------------- | ----------------------------------------------------------------- |
+| `policy.checkpoint_profile`                 | Selects the packaged base, LIBERO, RoboTwin, or SO-101 contract   |
+| `policy.embodiment`                         | Robot name written in the prompt; selects a released slot table   |
+| `policy.state_slots`, `policy.action_slots` | Explicit policy-layout slot of each raw state/action value        |
+| `policy.camera_order`                       | Dataset camera per checkpoint image slot; `null` leaves it empty  |
+| `policy.action_head`                        | Uses the checkpoint's `flow` or `actioncodec` action path         |
+| `policy.runtime_system`                     | Selects direct System 1 or unified System 2 reasoning and action  |
+| `policy.runtime_cot_fields`                 | System 2 chain of thought: `["subtask"]` or `["bbox", "subtask"]` |
+| `policy.chunk_size`                         | Number of actions predicted in each chunk                         |
+| `policy.n_action_steps`                     | Number of actions executed before replanning                      |
+| `policy.use_language_recipe`                | Enable G0.5's built-in language-supervision recipe                |
+| `policy.recipe_path`                        | Explicit external recipe override used during fine-tuning         |
+| `policy.optimizer_backbone_lr_multiplier`   | Learning-rate multiplier for the language backbone                |
+| `policy.optimizer_vision_lr_multiplier`     | Learning-rate multiplier for the vision tower                     |
 
 The action head, dimensions, horizon, processor modes, and normalization come
 from the checkpoint; incompatible overrides are rejected during loading.
