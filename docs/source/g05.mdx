@@ -236,29 +236,29 @@ checkpoint keeps its own embodiment and slot table.
 The joints are placed in the base layout from the dataset's joint names:
 `left_`-prefixed joints go on the left arm and the others on the right arm, a
 joint whose name contains `gripper` takes that arm's gripper slot, and the rest
-fill its nine control slots in order. A 6-joint OMX arm thus fills right-arm
-slots 10-14 and the right gripper, and a 7-DoF arm fills 10-16 and the gripper.
+fill its nine control slots in order. A 5-joint arm with a gripper thus fills
+right-arm slots 10-14 and the right gripper, and a 7-DoF arm fills 10-16 and the gripper.
 Set `--policy.state_slots` and `--policy.action_slots` to place the joints
 explicitly. The resolved slots are saved with the fine-tuned checkpoint.
 
-The example below uses an OMX dataset recorded with `top` and `wrist` cameras.
-The base checkpoint's image slots are a head view, the left wrist, and the right
-wrist; the single arm sits on the right, so its wrist camera takes the
-right-wrist slot and the left-wrist slot stays empty. List-valued flags take
+The example below fine-tunes on a single-arm robot recorded with a `front`
+camera and a `wrist` camera. The base checkpoint's image slots are a head view,
+the left wrist, and the right wrist; a single arm sits on the right, so its
+wrist camera takes the right-wrist slot and the left-wrist slot stays empty. List-valued flags take
 quoted JSON.
 
 ```bash
 lerobot-train \
-  --dataset.repo_id=${HF_USER}/omx_multicubes_annotated \
+  --dataset.repo_id=${HF_USER}/my_robot_dataset_annotated \
   --policy.path=lerobot/g05_base \
-  --policy.embodiment=omx \
-  --policy.camera_order='["observation.images.top", null, "observation.images.wrist"]' \
+  --policy.embodiment=my_robot \
+  --policy.camera_order='["observation.images.front", null, "observation.images.wrist"]' \
   --policy.n_obs_steps=1 \
   --policy.use_language_recipe=true \
   --policy.device=cuda \
-  --policy.repo_id=${HF_USER}/g05_omx_finetuned \
-  --output_dir=outputs/train/g05_omx \
-  --job_name=g05_omx \
+  --policy.repo_id=${HF_USER}/g05_my_robot_finetuned \
+  --output_dir=outputs/train/g05_my_robot \
+  --job_name=g05_my_robot \
   --batch_size=16 \
   --steps=10000
 ```
@@ -271,13 +271,13 @@ checkpoint; pass
 `--policy.normalization_mapping='{"VISUAL": "IDENTITY", "STATE": "QUANTILES", "ACTION": "QUANTILES"}'`
 for q01/q99). The gripper stays absolute (`relative_exclude_joints=["gripper"]`
 in the base checkpoint), while arm joints are trained as deltas. BBox targets
-come from the grounded `vqa` answers annotated on `observation.images.top`, the
-first non-empty camera slot.
+come from the grounded `vqa` answers annotated on `observation.images.front`,
+the first non-empty camera slot.
 
 The SO-101 recipe uses AdamW at `8e-5` with 1,000 warmup steps. The packaged
 LIBERO and RoboTwin configurations use their released `1e-5` recipe, with
 1,000 and 500 warmup steps respectively. All profiles preserve G0.5's parameter groups and
-learning-rate multipliers. Override these only when deliberately changing the author recipe:
+learning-rate multipliers. Override them to train with a different optimization recipe:
 
 ```bash
 --policy.optimizer_lr=2e-5 \
@@ -310,14 +310,13 @@ lerobot-train \
 | `policy.optimizer_backbone_lr_multiplier`   | Learning-rate multiplier for the language backbone               |
 | `policy.optimizer_vision_lr_multiplier`     | Learning-rate multiplier for the vision tower                    |
 
-Do not override checkpoint contract fields unless deliberately converting or
-validating another embodiment. Incompatible action heads, dimensions, horizons,
-processor modes, and normalization contracts are rejected during loading.
+The action head, dimensions, horizon, processor modes, and normalization come
+from the checkpoint; incompatible overrides are rejected during loading.
 
 ## Evaluation
 
-Once the pinned LIBERO simulator and assets are installed, run the matching
-LeRobot rollout with the author camera names and relative control:
+With the LIBERO simulator installed, evaluate the LIBERO checkpoint with its
+camera names and relative control:
 
 ```bash
 lerobot-eval \
