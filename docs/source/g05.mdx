@@ -47,16 +47,18 @@ ActionCodec metadata, statistics, exact prompt template, and license. Loading
 rejects a different head, horizon, processor mode, or
 normalization contract.
 
-The converted checkpoints are private under the LeRobot organization:
-
 ### Converted Checkpoints
 
-| Repository           | Contract                     |
-| -------------------- | ---------------------------- |
-| `TBD/g05_base`       | 27D base, R1 Lite processor  |
-| `TBD/g05_libero`     | 20D LIBERO                   |
-| `TBD/g05_robotwin20` | 20D RoboTwin                 |
-| `TBD/g05_so101`      | 20D SO-101 (`so100` profile) |
+| Repository               | Contract                     |
+| ------------------------ | ---------------------------- |
+| `lerobot/g05_base`       | 27D base, R1 Lite processor  |
+| `lerobot/g05_libero`     | 20D LIBERO                   |
+| `lerobot/g05_robotwin20` | 20D RoboTwin                 |
+| `lerobot/g05_so101`      | 20D SO-101 (`so100` profile) |
+
+These checkpoints are released under the non-commercial
+[G0.5 Community License](https://huggingface.co/OpenGalaxea/G05/blob/main/licenses/LICENSE-G0.5);
+see [License](#license).
 
 `lerobot/g05_base` supplies those 27D model weights, both action heads, the
 ActionCodec tokenizer, and the released six-step R1 Lite processor/statistics
@@ -81,12 +83,9 @@ uv sync --extra g05 --extra test
 > uv pip install flash-linear-attention
 > ```
 >
-> Fine-tuning `lerobot/g05_base` at batch 8 on one A100 80GB went from 1.6 to
-> 1.1 s/step and from 47.8 to 39.6 GB peak memory, with identical losses. The
-> first step takes about 20 s longer while Triton compiles its kernels.
+> Training is about 1.5x faster with it and uses less memory, with identical
+> losses. The first step takes about 20 s longer while Triton compiles its kernels.
 
-The LeRobot organization hosts the prepared base, LIBERO, RoboTwin, and SO-101
-checkpoints privately. Authenticate with `hf auth login` before loading them.
 SO-100 and SO-101 share the released `so100` embodiment token and six-joint
 right-arm contract. A missing left-wrist camera is zero-padded.
 
@@ -160,13 +159,8 @@ live observation, so it is rejected until `/start` is running. It prints the
 subtask it picks as `Autosteer subtask:`, and `--autosteer_interval_s` sets how
 many seconds of motion pass between two re-planning queries.
 
-`/vqa` is not supported on G0.5.
-
 In interactive mode `--duration` bounds each `/start` segment rather than the
 whole session.
-
-The checkpoint is non-commercial and may be private; authenticate with
-`hf auth login` before loading it.
 
 ## Data Requirements
 
@@ -191,7 +185,7 @@ and loaded by the normal LeRobot scripts.
 The objective preserves the packaged `ar.ce_weight`, optional
 `ar.ce_z_loss_scale`, and `fm.fm_weight`; the autoregressive loss jointly covers
 CoT text and ActionCodec targets.
-For example, fine-tune the private SO-101 checkpoint on a LeRobot dataset:
+For example, fine-tune the SO-101 checkpoint on a LeRobot dataset:
 
 ### Training Command Example
 
@@ -259,6 +253,7 @@ lerobot-train \
   --policy.path=lerobot/g05_base \
   --policy.embodiment=omx \
   --policy.camera_order='["observation.images.top", null, "observation.images.wrist"]' \
+  --policy.n_obs_steps=1 \
   --policy.use_language_recipe=true \
   --policy.device=cuda \
   --policy.repo_id=${HF_USER}/g05_omx_finetuned \
@@ -267,6 +262,9 @@ lerobot-train \
   --batch_size=16 \
   --steps=10000
 ```
+
+`--policy.n_obs_steps=1` feeds one frame per camera, as the upstream fine-tunes do;
+the base checkpoint's six-step history multiplies the images per sample by six.
 
 Normalization uses the dataset's own statistics (z-score for the base
 checkpoint; pass
